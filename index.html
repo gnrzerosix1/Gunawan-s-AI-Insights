@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gunawan's AI Insights</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+            color: black;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-sizing: border-box;
+            font-weight: bold; /* Membuat teks lebih tebal */
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            margin-right: 10px;
+            font-weight: bold; /* Membuat teks pada tombol lebih tebal */
+        }
+        #response {
+            margin-top: 20px;
+            color: black; /* Warna teks diubah menjadi hitam */
+            font-weight: bold; /* Membuat teks lebih tebal */
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+</head>
+<body>
+    <h1>Gunawan's AI Insights</h1>
+    <textarea id="inputText" placeholder="Type your question here..."></textarea>
+    <input type="file" id="fileInput" accept=".txt,.doc,.docx,.pdf" />
+    <button onclick="generateContent()">Submit</button>
+    <button onclick="clearConversation()">Clear Conversation</button>
+    <div id="response"></div>
+
+    <script>
+        let conversationHistory = [];
+
+        async function generateContent() {
+            const inputText = document.getElementById('inputText').value.toLowerCase(); // Ambil teks input
+
+            // Cek pertanyaan identitas dalam berbagai bahasa
+            if (inputText.includes('siapa kamu') || inputText.includes('nama kamu') || inputText.includes('kamu siapa')) {
+                const responseText = "Saya adalah Gunawan's AI Insights, dibuat dan dikembangkan oleh Gunawan Nugraha S.Hut.";
+                document.getElementById('response').innerText = responseText;
+                conversationHistory.push(inputText, responseText);
+                return; // Hentikan eksekusi jika respons sudah ditemukan
+            } else if (inputText.includes('siapa kau')) {
+                const responseText = "Aku adalah Gunawan's AI Insights, dibuat dan dikembangkan oleh Gunawan Nugraha S.Hut.";
+                document.getElementById('response').innerText = responseText;
+                conversationHistory.push(inputText, responseText);
+                return;
+            } else if (inputText.includes('who are you') || inputText.includes('what is your name') || inputText.includes('who is this')) {
+                const responseText = "I am Gunawan's AI Insights, created and developed by Gunawan Nugraha S.Hut.";
+                document.getElementById('response').innerText = responseText;
+                conversationHistory.push(inputText, responseText);
+                return;
+            } else if (inputText.includes('quién eres') || inputText.includes('cómo te llamas')) {
+                const responseText = "Soy Gunawan's AI Insights, creado y desarrollado por Gunawan Nugraha S.Hut.";
+                document.getElementById('response').innerText = responseText;
+                conversationHistory.push(inputText, responseText);
+                return;
+            }
+            // Tambahkan bahasa lain sesuai kebutuhan
+
+            // Lanjutkan ke bagian pemrosesan API jika bukan pertanyaan tentang identitas AI
+            const apiKey = 'AIzaSyCrE71mcvtzBsyLZljkDslmYjQC9VrZCcs';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+            
+            const fileInput = document.getElementById('fileInput');
+            let fileText = '';
+
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const { value } = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                    fileText = value;
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = async function(e) {
+                        fileText = e.target.result;
+                    };
+                    reader.readAsText(file);
+                }
+            }
+
+            const combinedText = conversationHistory.join(' ') + ' ' + inputText + ' ' + fileText;
+            conversationHistory.push(inputText);
+
+            const data = {
+                contents: [
+                    {
+                        parts: [
+                            { text: combinedText }
+                        ]
+                    }
+                ]
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                console.log(result);
+                
+                const text = result.candidates[0].content.parts[0].text;
+
+                document.getElementById('response').innerText = text;
+
+                conversationHistory.push(text);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('response').innerText = "Error fetching data.";
+            }
+        }
+
+        // Fungsi untuk menghapus riwayat percakapan dan membersihkan tampilan
+        function clearConversation() {
+            conversationHistory = [];
+            document.getElementById('inputText').value = '';
+            document.getElementById('response').innerText = '';
+            document.getElementById('fileInput').value = '';
+        }
+
+        document.getElementById('inputText').addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                generateContent();
+            }
+        });
+    </script>
+</body>
+</html>
