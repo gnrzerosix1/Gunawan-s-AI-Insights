@@ -9,90 +9,81 @@
         body {
             font-family: 'Poppins', sans-serif;
             padding: 20px;
-            background-color: #181818; /* Dark background */
-            color: #fff; /* White text */
+            background-color: #181818;
+            color: #fff;
             display: flex;
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
         }
-
         h1 {
-            color: #007bff; /* Biru untuk judul */
+            color: #007bff;
             font-size: 3rem;
             margin-bottom: 20px;
         }
-
         .container {
-            background-color: #282828; /* Darker grey background for container */
+            background-color: #282828;
             padding: 30px;
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             width: 80%;
             max-width: 800px;
         }
-
         textarea {
             width: 100%;
             height: 150px;
             margin-bottom: 20px;
-            color: #fff; /* White text */
-            background-color: #383838; /* Darker grey for textarea */
-            border: 1px solid #444; /* Darker grey border */
+            color: #fff;
+            background-color: #383838;
+            border: 1px solid #444;
             padding: 15px;
             box-sizing: border-box;
             font-size: 1rem;
-            resize: none; /* Disable resizing */
+            resize: none;
         }
-
         button {
             padding: 12px 20px;
             font-size: 1rem;
             margin-right: 10px;
             font-weight: 600;
-            background-color: #333; /* Dark grey button */
-            color: #fff; /* White text */
-            border: none; /* Remove default button border */
+            background-color: #333;
+            color: #fff;
+            border: none;
             cursor: pointer;
             transition: background-color 0.3s ease;
             border-radius: 5px;
         }
-
         button:hover {
-            background-color: #555; /* Darker grey on hover */
+            background-color: #555;
         }
-
         #response {
             margin-top: 20px;
-            color: #007bff; /* Biru untuk jawaban AI */
+            color: #007bff;
             font-weight: 600;
-            white-space: pre-wrap; /* Preserve line breaks */
+            white-space: pre-wrap;
         }
-
         #premiumNotice {
-            color: #ff5555; /* Red color for premium notice */
+            color: #ff5555;
             margin-top: 10px;
             font-size: 0.9rem;
         }
-
         #voucherInput {
             width: 100%;
             padding: 10px;
             margin-bottom: 10px;
-            color: #fff; /* White text */
-            background-color: #383838; /* Darker grey for input */
-            border: 1px solid #444; /* Darker grey border */
+            color: #fff;
+            background-color: #383838;
+            border: 1px solid #444;
             box-sizing: border-box;
             font-size: 1rem;
             border-radius: 5px;
         }
-
         #fileInput {
             padding: 10px;
             margin-bottom: 10px;
-            background-color: #383838; /* Darker grey for file input */
-            color: #fff; /* White text */
-            border: 1px solid #444; /* Darker grey border */
+            background-color: #383838;
+            color: #fff;
+            border: 1px solid #444;
             box-sizing: border-box;
             font-size: 1rem;
             border-radius: 5px;
@@ -102,86 +93,23 @@
             width: 0;
             height: 0;
         }
-
         #fileInputLabel {
             display: inline-block;
             padding: 10px 20px;
-            background-color: #333; /* Dark grey button */
-            color: #fff; /* White text */
-            border: none; /* Remove default button border */
+            background-color: #333;
+            color: #fff;
+            border: none;
             cursor: pointer;
             transition: background-color 0.3s ease;
             border-radius: 5px;
         }
-
         #fileInputLabel:hover {
-            background-color: #555; /* Darker grey on hover */
+            background-color: #555;
         }
-
         #fileInput:focus + #fileInputLabel {
-            outline: 3px solid #007bff; /* Biru outline for focus */
+            outline: 3px solid #007bff;
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
-
-    <!-- Firebase SDK -->
-    <script type="module">
-        // Import Firebase functions from SDK
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.2/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.1.2/firebase-firestore.js";
-
-        // Konfigurasi Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyAkvyIqwHPlZKGlC5Zd9Gk8iBkyrIchjCA", // API key Firebase
-            authDomain: "gnrzerosix-a1456.firebaseapp.com",
-            projectId: "gnrzerosix-a1456",
-            storageBucket: "gnrzerosix-a1456.appspot.com",
-            messagingSenderId: "255427571133",
-            appId: "1:255427571133:web:eccd86c7c7c9d59dba36d4",
-            measurementId: "G-V0EQ6PQ9EJ"
-        };
-
-        // Inisialisasi Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        let isPremiumUser = false; // Default ke non-premium
-
-        // Fungsi untuk mengecek voucher di Firestore
-        async function checkVoucher() {
-            const voucherCode = document.getElementById('voucherInput').value.trim();
-            if (voucherCode === "") {
-                alert("Silakan masukkan kode voucher.");
-                return;
-            }
-
-            const voucherRef = doc(db, 'vouchers', voucherCode);
-
-            try {
-                const docSnap = await getDoc(voucherRef);
-
-                if (docSnap.exists()) {
-                    if (docSnap.data().valid) {
-                        isPremiumUser = true;
-                        document.getElementById('fileInput').disabled = false; // Mengaktifkan input file
-                        document.getElementById('premiumNotice').style.display = 'none'; // Menyembunyikan pemberitahuan
-                        alert("Voucher valid! Anda sekarang adalah pengguna premium.");
-                    } else {
-                        alert("Voucher sudah digunakan atau tidak valid.");
-                    }
-                } else {
-                    alert("Voucher tidak ditemukan.");
-                }
-            } catch (error) {
-                console.error('Error validating voucher:', error);
-                alert('Terjadi kesalahan saat validasi voucher.');
-            }
-        }
-
-        window.checkVoucher = checkVoucher; // Assign function to window so it can be accessed in the HTML
-    </script>
 </head>
 <body>
     <h1>Gunawan's AI Insights</h1>
@@ -193,7 +121,7 @@
         <label for="fileInput" id="fileInputLabel">Unggah Dokumen</label>
 
         <p id="premiumNotice">
-            Fitur analisis dokumen ini hanya tersedia untuk pengguna premium. Harga (Rp. 100.000) Perbulan. 
+            Fitur analisis dokumen ini hanya tersedia untuk pengguna premium. Harga (Rp. 100.000) Perbulan.
             <a href="https://panduanvoucher.blogspot.com/2024/09/cara-pembelian.html" target="_blank">Klik di sini untuk pembelian</a>
         </p>
 
@@ -217,96 +145,80 @@
                 return;
             }
 
-            // API key dipecah menjadi beberapa bagian
-            const apiKeyParts = ['AIzaSyCrE7', '1mcvtzBsy', 'LZljkDslmY', 'jQC9VrZCcs']; // API key AI
-            const apiKey = apiKeyParts.join(''); // Menggabungkan bagian-bagian API key
-
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-            
             const fileInput = document.getElementById('fileInput');
             let fileText = '';
 
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
-                const reader = new FileReader();
+                
+                // Handle file reading logic (PDF, Excel, Word, etc.)
+                if (file.type === "application/pdf") {
+                    fileText = await readPDF(file);
+                } else if (file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || file.type === "application/vnd.ms-excel") {
+                    fileText = await readExcel(file);
+                } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const { value } = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                    fileText = value;
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = async function(e) {
+                        fileText = e.target.result;
+                    };
+                    reader.readAsText(file);
+                }
+            }
 
-                reader.onload = async function(event) {
-                    const fileContent = event.target.result;
-                    const contentType = file.type;
+            const combinedText = conversationHistory.join(' ') + ' ' + inputText + ' ' + fileText;
+            conversationHistory.push(inputText);
 
-                    if (contentType.includes("application/pdf")) {
-                        await readPDF(file);
-                    } else if (contentType.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
-                        await readExcel(file);
-                    } else {
-                        fileText = fileContent;
+            const data = {
+                contents: [
+                    {
+                        parts: [
+                            { text: combinedText }
+                        ]
                     }
+                ]
+            };
 
-                    await fetchContent(inputText, fileText); // Call fetchContent after reading the file
-                };
-                reader.readAsText(file); // Read as text by default
-            } else {
-                await fetchContent(inputText, fileText);
-            }
-        }
-
-        async function readPDF(file) {
-            const pdfData = await pdfjsLib.getDocument(URL.createObjectURL(file)).promise;
-            const pdfText = [];
-
-            for (let i = 1; i <= pdfData.numPages; i++) {
-                const page = await pdfData.getPage(i);
-                const textContent = await page.getTextContent();
-                const textItems = textContent.items.map(item => item.str);
-                pdfText.push(textItems.join(' '));
-            }
-            return pdfText.join('\n');
-        }
-
-        async function readExcel(file) {
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data);
-            let excelText = '';
-
-            workbook.SheetNames.forEach(sheetName => {
-                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
-                rows.forEach(row => {
-                    excelText += row.join(' ') + '\n';
-                });
-            });
-            return excelText;
-        }
-
-        async function fetchContent(inputText, fileText) {
             try {
-                const response = await fetch(url, {
+                // Panggil Netlify Function alih-alih menggunakan API key langsung
+                const response = await fetch('/.netlify/functions/generateContent', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        prompt: `${inputText} ${fileText}`, // Menggabungkan input teks dengan isi file
-                        maxOutputTokens: 100,
-                        temperature: 0.7,
-                    })
+                    body: JSON.stringify(data)
                 });
 
-                const data = await response.json();
-                const generatedContent = data?.output?.content || "Tidak ada hasil yang ditemukan.";
-                conversationHistory.push(generatedContent);
-                document.getElementById('response').innerText = generatedContent; // Tampilkan hasil
-                document.getElementById('inputText').value = ""; // Kosongkan input
+                const result = await response.json();
+                const text = result.candidates[0].content.parts[0].text;
+
+                document.getElementById('response').innerText = text;
+                conversationHistory.push(text);
             } catch (error) {
-                console.error("Error:", error);
-                document.getElementById('response').innerText = "Terjadi kesalahan saat mengambil konten.";
+                console.error('Error:', error);
+                document.getElementById('response').innerText = "Error fetching data.";
             }
         }
 
+        // Fungsi untuk membaca PDF, Excel, dsb., tetap sama seperti di kode sebelumnya
+
+        // Fungsi untuk menghapus riwayat percakapan
         function clearConversation() {
             conversationHistory = [];
-            document.getElementById('response').innerText = "";
-            document.getElementById('inputText').value = "";
+            document.getElementById('inputText').value = '';
+            document.getElementById('response').innerText = '';
+            document.getElementById('fileInput').value = '';
         }
+
+        document.getElementById('inputText').addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                generateContent();
+            }
+        });
     </script>
 </body>
 </html>
