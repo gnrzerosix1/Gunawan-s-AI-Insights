@@ -4,63 +4,122 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gunawan's AI Insights</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap">
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Poppins', sans-serif;
             padding: 20px;
             background-color: #181818; /* Dark background */
             color: #fff; /* White text */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
+
+        h1 {
+            color: #007bff; /* Biru untuk judul */
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            background-color: #282828; /* Darker grey background for container */
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 80%;
+            max-width: 800px;
+        }
+
         textarea {
             width: 100%;
-            height: 100px;
-            margin-bottom: 10px;
+            height: 150px;
+            margin-bottom: 20px;
             color: #fff; /* White text */
-            background-color: #282828; /* Darker grey for textarea */
+            background-color: #383838; /* Darker grey for textarea */
             border: 1px solid #444; /* Darker grey border */
-            padding: 10px;
+            padding: 15px;
             box-sizing: border-box;
-            font-weight: bold;
+            font-size: 1rem;
             resize: none; /* Disable resizing */
         }
+
         button {
-            padding: 10px 15px;
-            font-size: 16px;
+            padding: 12px 20px;
+            font-size: 1rem;
             margin-right: 10px;
-            font-weight: bold;
+            font-weight: 600;
             background-color: #333; /* Dark grey button */
             color: #fff; /* White text */
             border: none; /* Remove default button border */
             cursor: pointer;
+            transition: background-color 0.3s ease;
+            border-radius: 5px;
         }
+
         button:hover {
             background-color: #555; /* Darker grey on hover */
         }
+
         #response {
             margin-top: 20px;
             color: #007bff; /* Biru untuk jawaban AI */
-            font-weight: bold;
+            font-weight: 600;
+            white-space: pre-wrap; /* Preserve line breaks */
         }
+
         #premiumNotice {
             color: #ff5555; /* Red color for premium notice */
             margin-top: 10px;
+            font-size: 0.9rem;
         }
+
         #voucherInput {
+            width: 100%;
+            padding: 10px;
             margin-bottom: 10px;
             color: #fff; /* White text */
-            background-color: #282828; /* Darker grey for input */
+            background-color: #383838; /* Darker grey for input */
             border: 1px solid #444; /* Darker grey border */
-            padding: 10px;
             box-sizing: border-box;
+            font-size: 1rem;
+            border-radius: 5px;
         }
+
         #fileInput {
-            background-color: #282828; /* Darker grey for file input */
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #383838; /* Darker grey for file input */
             color: #fff; /* White text */
             border: 1px solid #444; /* Darker grey border */
+            box-sizing: border-box;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            opacity: 0;
+            position: absolute;
+            width: 0;
+            height: 0;
         }
-        h1 {
-            color: #007bff; /* Biru untuk judul */
-            text-align: center;
+
+        #fileInputLabel {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #333; /* Dark grey button */
+            color: #fff; /* White text */
+            border: none; /* Remove default button border */
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            border-radius: 5px;
+        }
+
+        #fileInputLabel:hover {
+            background-color: #555; /* Darker grey on hover */
+        }
+
+        #fileInput:focus + #fileInputLabel {
+            outline: 3px solid #007bff; /* Biru outline for focus */
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
@@ -126,22 +185,26 @@
 </head>
 <body>
     <h1>Gunawan's AI Insights</h1>
-    <textarea id="inputText" placeholder="Type your question here..."></textarea>
+    <div class="container">
+        <textarea id="inputText" placeholder="Ketik pertanyaan Anda di sini..."></textarea>
 
-    <!-- Disabled file input by default -->
-    <input type="file" id="fileInput" accept=".txt,.doc,.docx,.pdf,.xls,.xlsx" disabled />
-    <p id="premiumNotice">
-        Fitur analisis dokumen ini hanya tersedia untuk pengguna premium. Harga (Rp. 100.000) Perbulan. 
-        <a href="https://panduanvoucher.blogspot.com/2024/09/cara-pembelian.html" target="_blank">Klik di sini untuk pembelian</a>
-    </p>
-    
-    <!-- Voucher input to unlock premium -->
-    <input type="text" id="voucherInput" placeholder="Masukkan kode voucher di sini..." />
-    <button onclick="checkVoucher()">Submit Voucher</button>
+        <!-- File input section with label -->
+        <input type="file" id="fileInput" accept=".txt,.doc,.docx,.pdf,.xls,.xlsx" disabled />
+        <label for="fileInput" id="fileInputLabel">Unggah Dokumen</label>
 
-    <button onclick="generateContent()">Submit</button>
-    <button onclick="clearConversation()">Clear Conversation</button>
-    <div id="response"></div>
+        <p id="premiumNotice">
+            Fitur analisis dokumen ini hanya tersedia untuk pengguna premium. Harga (Rp. 100.000) Perbulan. 
+            <a href="https://panduanvoucher.blogspot.com/2024/09/cara-pembelian.html" target="_blank">Klik di sini untuk pembelian</a>
+        </p>
+
+        <!-- Voucher input section -->
+        <input type="text" id="voucherInput" placeholder="Masukkan kode voucher di sini..." />
+        <button onclick="checkVoucher()">Submit Voucher</button>
+
+        <button onclick="generateContent()">Generate</button>
+        <button onclick="clearConversation()">Clear Conversation</button>
+        <div id="response"></div>
+    </div>
 
     <script>
         let conversationHistory = [];
