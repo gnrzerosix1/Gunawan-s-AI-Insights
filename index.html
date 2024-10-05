@@ -9,81 +9,90 @@
         body {
             font-family: 'Poppins', sans-serif;
             padding: 20px;
-            background-color: #181818;
-            color: #fff;
+            background-color: #181818; /* Dark background */
+            color: #fff; /* White text */
             display: flex;
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
         }
+
         h1 {
-            color: #007bff;
+            color: #007bff; /* Biru untuk judul */
             font-size: 3rem;
             margin-bottom: 20px;
         }
+
         .container {
-            background-color: #282828;
+            background-color: #282828; /* Darker grey background for container */
             padding: 30px;
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             width: 80%;
             max-width: 800px;
         }
+
         textarea {
             width: 100%;
             height: 150px;
             margin-bottom: 20px;
-            color: #fff;
-            background-color: #383838;
-            border: 1px solid #444;
+            color: #fff; /* White text */
+            background-color: #383838; /* Darker grey for textarea */
+            border: 1px solid #444; /* Darker grey border */
             padding: 15px;
             box-sizing: border-box;
             font-size: 1rem;
-            resize: none;
+            resize: none; /* Disable resizing */
         }
+
         button {
             padding: 12px 20px;
             font-size: 1rem;
             margin-right: 10px;
             font-weight: 600;
-            background-color: #333;
-            color: #fff;
-            border: none;
+            background-color: #333; /* Dark grey button */
+            color: #fff; /* White text */
+            border: none; /* Remove default button border */
             cursor: pointer;
             transition: background-color 0.3s ease;
             border-radius: 5px;
         }
+
         button:hover {
-            background-color: #555;
+            background-color: #555; /* Darker grey on hover */
         }
+
         #response {
             margin-top: 20px;
-            color: #007bff;
+            color: #007bff; /* Biru untuk jawaban AI */
             font-weight: 600;
-            white-space: pre-wrap;
+            white-space: pre-wrap; /* Preserve line breaks */
         }
+
         #premiumNotice {
-            color: #ff5555;
+            color: #ff5555; /* Red color for premium notice */
             margin-top: 10px;
             font-size: 0.9rem;
         }
+
         #voucherInput {
             width: 100%;
             padding: 10px;
             margin-bottom: 10px;
-            color: #fff;
-            background-color: #383838;
-            border: 1px solid #444;
+            color: #fff; /* White text */
+            background-color: #383838; /* Darker grey for input */
+            border: 1px solid #444; /* Darker grey border */
             box-sizing: border-box;
             font-size: 1rem;
             border-radius: 5px;
         }
+
         #fileInput {
             padding: 10px;
             margin-bottom: 10px;
-            background-color: #383838;
-            color: #fff;
-            border: 1px solid #444;
+            background-color: #383838; /* Darker grey for file input */
+            color: #fff; /* White text */
+            border: 1px solid #444; /* Darker grey border */
             box-sizing: border-box;
             font-size: 1rem;
             border-radius: 5px;
@@ -93,21 +102,24 @@
             width: 0;
             height: 0;
         }
+
         #fileInputLabel {
             display: inline-block;
             padding: 10px 20px;
-            background-color: #333;
-            color: #fff;
-            border: none;
+            background-color: #333; /* Dark grey button */
+            color: #fff; /* White text */
+            border: none; /* Remove default button border */
             cursor: pointer;
             transition: background-color 0.3s ease;
             border-radius: 5px;
         }
+
         #fileInputLabel:hover {
-            background-color: #555;
+            background-color: #555; /* Darker grey on hover */
         }
+
         #fileInput:focus + #fileInputLabel {
-            outline: 3px solid #007bff;
+            outline: 3px solid #007bff; /* Biru outline for focus */
         }
     </style>
 </head>
@@ -116,12 +128,8 @@
     <div class="container">
         <textarea id="inputText" placeholder="Ketik pertanyaan Anda di sini..."></textarea>
 
-        <!-- File input section with label -->
-        <input type="file" id="fileInput" accept=".txt,.doc,.docx,.pdf,.xls,.xlsx" disabled />
-        <label for="fileInput" id="fileInputLabel">Unggah Dokumen</label>
-
         <p id="premiumNotice">
-            Fitur analisis dokumen ini hanya tersedia untuk pengguna premium. Harga (Rp. 100.000) Perbulan.
+            Fitur analisis dokumen ini hanya tersedia untuk pengguna premium. Harga (Rp. 100.000) Perbulan. 
             <a href="https://panduanvoucher.blogspot.com/2024/09/cara-pembelian.html" target="_blank">Klik di sini untuk pembelian</a>
         </p>
 
@@ -137,80 +145,48 @@
     <script>
         let conversationHistory = [];
 
+        // Updated generateContent function to work with the server
         async function generateContent() {
-            const inputText = document.getElementById('inputText').value.toLowerCase(); // Ambil teks input
+            const inputText = document.getElementById('inputText').value.toLowerCase();
 
             if (inputText === "") {
                 alert("Pertanyaan tidak boleh kosong.");
                 return;
             }
 
-            const fileInput = document.getElementById('fileInput');
-            let fileText = '';
-
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                
-                // Handle file reading logic (PDF, Excel, Word, etc.)
-                if (file.type === "application/pdf") {
-                    fileText = await readPDF(file);
-                } else if (file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || file.type === "application/vnd.ms-excel") {
-                    fileText = await readExcel(file);
-                } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const { value } = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
-                    fileText = value;
-                } else {
-                    const reader = new FileReader();
-                    reader.onload = async function(e) {
-                        fileText = e.target.result;
-                    };
-                    reader.readAsText(file);
-                }
-            }
-
-            const combinedText = conversationHistory.join(' ') + ' ' + inputText + ' ' + fileText;
-            conversationHistory.push(inputText);
-
             const data = {
                 contents: [
                     {
                         parts: [
-                            { text: combinedText }
+                            { text: inputText }
                         ]
                     }
                 ]
             };
 
             try {
-                // Panggil Netlify Function alih-alih menggunakan API key langsung
                 const response = await fetch('/.netlify/functions/generateContent', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify(data),
                 });
 
                 const result = await response.json();
                 const text = result.candidates[0].content.parts[0].text;
 
                 document.getElementById('response').innerText = text;
-                conversationHistory.push(text);
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('response').innerText = "Error fetching data.";
             }
         }
 
-        // Fungsi untuk membaca PDF, Excel, dsb., tetap sama seperti di kode sebelumnya
-
-        // Fungsi untuk menghapus riwayat percakapan
         function clearConversation() {
             conversationHistory = [];
             document.getElementById('inputText').value = '';
             document.getElementById('response').innerText = '';
-            document.getElementById('fileInput').value = '';
         }
 
         document.getElementById('inputText').addEventListener('keypress', function (event) {
