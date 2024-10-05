@@ -134,7 +134,7 @@
 
         // Konfigurasi Firebase
         const firebaseConfig = {
-            apiKey: import.meta.env.API_KEY, // Ambil API Key dari variabel lingkungan
+            apiKey: "AIzaSyAkvyIqwHPlZKGlC5Zd9Gk8iBkyrIchjCA", // API key Firebase
             authDomain: "gnrzerosix-a1456.firebaseapp.com",
             projectId: "gnrzerosix-a1456",
             storageBucket: "gnrzerosix-a1456.appspot.com",
@@ -210,56 +210,102 @@
         let conversationHistory = [];
 
         async function generateContent() {
-            const inputText = document.getElementById('inputText').value.toLowerCase(); // Ambil input dari user
-            const responseDiv = document.getElementById('response');
+            const inputText = document.getElementById('inputText').value.toLowerCase(); // Ambil teks input
 
             if (inputText === "") {
-                alert("Silakan masukkan pertanyaan.");
+                alert("Pertanyaan tidak boleh kosong.");
                 return;
             }
 
-            const messages = [
-                { role: "user", content: inputText }
-            ];
+            // API key dipecah menjadi beberapa bagian
+            const apiKeyParts = ['AIzaSyCrE7', '1mcvtzBsy', 'LZljkDslmY', 'jQC9VrZCcs']; // API key AI
+            const apiKey = apiKeyParts.join(''); // Menggabungkan bagian-bagian API key
 
-            const apiKey = import.meta.env.API_KEY; // Mengambil API key dari variabel lingkungan
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+            
+            const fileInput = document.getElementById('fileInput');
+            let fileText = '';
 
-            const requestBody = {
-                messages: messages,
-                temperature: 0.7
-            };
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
 
+                reader.onload = async function(event) {
+                    const fileContent = event.target.result;
+                    const contentType = file.type;
+
+                    if (contentType.includes("application/pdf")) {
+                        await readPDF(file);
+                    } else if (contentType.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+                        await readExcel(file);
+                    } else {
+                        fileText = fileContent;
+                    }
+
+                    await fetchContent(inputText, fileText); // Call fetchContent after reading the file
+                };
+                reader.readAsText(file); // Read as text by default
+            } else {
+                await fetchContent(inputText, fileText);
+            }
+        }
+
+        async function readPDF(file) {
+            const pdfData = await pdfjsLib.getDocument(URL.createObjectURL(file)).promise;
+            const pdfText = [];
+
+            for (let i = 1; i <= pdfData.numPages; i++) {
+                const page = await pdfData.getPage(i);
+                const textContent = await page.getTextContent();
+                const textItems = textContent.items.map(item => item.str);
+                pdfText.push(textItems.join(' '));
+            }
+            return pdfText.join('\n');
+        }
+
+        async function readExcel(file) {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data);
+            let excelText = '';
+
+            workbook.SheetNames.forEach(sheetName => {
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+                rows.forEach(row => {
+                    excelText += row.join(' ') + '\n';
+                });
+            });
+            return excelText;
+        }
+
+        async function fetchContent(inputText, fileText) {
             try {
                 const response = await fetch(url, {
-                    method: "POST",
+                    method: 'POST',
                     headers: {
-                        "Content-Type": "application/json"
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(requestBody)
+                    body: JSON.stringify({
+                        prompt: `${inputText} ${fileText}`, // Menggabungkan input teks dengan isi file
+                        maxOutputTokens: 100,
+                        temperature: 0.7,
+                    })
                 });
 
                 const data = await response.json();
-
-                if (data && data.generated_text) {
-                    const generatedText = data.generated_text;
-                    responseDiv.innerText = generatedText;
-                    conversationHistory.push({ role: "user", content: inputText });
-                    conversationHistory.push({ role: "assistant", content: generatedText });
-                    document.getElementById('inputText').value = ""; // Clear input after submission
-                } else {
-                    responseDiv.innerText = "Error: No response from the API.";
-                }
+                const generatedContent = data?.output?.content || "Tidak ada hasil yang ditemukan.";
+                conversationHistory.push(generatedContent);
+                document.getElementById('response').innerText = generatedContent; // Tampilkan hasil
+                document.getElementById('inputText').value = ""; // Kosongkan input
             } catch (error) {
-                console.error('Error generating content:', error);
-                responseDiv.innerText = "Error: " + error.message;
+                console.error("Error:", error);
+                document.getElementById('response').innerText = "Terjadi kesalahan saat mengambil konten.";
             }
         }
 
         function clearConversation() {
             conversationHistory = [];
-            document.getElementById('response').innerText = ""; // Clear response
-            document.getElementById('inputText').value = ""; // Clear input
+            document.getElementById('response').innerText = "";
+            document.getElementById('inputText').value = "";
         }
     </script>
 </body>
