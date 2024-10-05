@@ -134,7 +134,7 @@
 
         // Konfigurasi Firebase
         const firebaseConfig = {
-            apiKey: process.env.API_KEY, // Menggunakan variabel lingkungan
+            apiKey: import.meta.env.API_KEY, // Ambil API Key dari variabel lingkungan
             authDomain: "gnrzerosix-a1456.firebaseapp.com",
             projectId: "gnrzerosix-a1456",
             storageBucket: "gnrzerosix-a1456.appspot.com",
@@ -210,145 +210,56 @@
         let conversationHistory = [];
 
         async function generateContent() {
-            const inputText = document.getElementById('inputText').value.toLowerCase(); // Ambil teks input
+            const inputText = document.getElementById('inputText').value.toLowerCase(); // Ambil input dari user
+            const responseDiv = document.getElementById('response');
 
             if (inputText === "") {
-                alert("Pertanyaan tidak boleh kosong.");
+                alert("Silakan masukkan pertanyaan.");
                 return;
             }
 
-            // Menggunakan API key dari variabel lingkungan
-            const apiKey = process.env.API_KEY;
+            const messages = [
+                { role: "user", content: inputText }
+            ];
 
+            const apiKey = import.meta.env.API_KEY; // Mengambil API key dari variabel lingkungan
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-            
-            const fileInput = document.getElementById('fileInput');
-            let fileText = '';
-
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                
-                // Handle PDF files
-                if (file.type === "application/pdf") {
-                    fileText = await readPDF(file);
-                }
-                // Handle Excel files
-                else if (file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || 
-                         file.type === "application/vnd.ms-excel") {
-                    fileText = await readExcel(file);
-                }
-                // Handle Word files
-                else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
-                         file.type === "application/msword") {
-                    fileText = await readWord(file);
-                }
-                // Handle text files
-                else if (file.type === "text/plain") {
-                    fileText = await readText(file);
-                }
-            }
 
             const requestBody = {
-                prompt: inputText + " " + fileText,
-                temperature: 0.5,
-                maxTokens: 100,
-                topP: 1,
-                frequencyPenalty: 0,
-                presencePenalty: 0,
+                messages: messages,
+                temperature: 0.7
             };
 
             try {
                 const response = await fetch(url, {
-                    method: 'POST',
+                    method: "POST",
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
+                        "Content-Type": "application/json"
                     },
                     body: JSON.stringify(requestBody)
                 });
 
-                if (!response.ok) {
-                    throw new Error("Network response was not ok " + response.statusText);
-                }
-
                 const data = await response.json();
-                const generatedText = data.generatedText || "Tidak ada jawaban yang dihasilkan.";
 
-                // Update history
-                conversationHistory.push({ input: inputText, response: generatedText });
-                document.getElementById('response').innerText = generatedText;
+                if (data && data.generated_text) {
+                    const generatedText = data.generated_text;
+                    responseDiv.innerText = generatedText;
+                    conversationHistory.push({ role: "user", content: inputText });
+                    conversationHistory.push({ role: "assistant", content: generatedText });
+                    document.getElementById('inputText').value = ""; // Clear input after submission
+                } else {
+                    responseDiv.innerText = "Error: No response from the API.";
+                }
             } catch (error) {
-                console.error("Error:", error);
-                alert("Terjadi kesalahan saat mengambil respons dari API.");
+                console.error('Error generating content:', error);
+                responseDiv.innerText = "Error: " + error.message;
             }
         }
 
-        async function readPDF(file) {
-            const text = await pdfjsLib.getDocument(URL.createObjectURL(file)).promise.then(pdf => {
-                let pdfText = '';
-                const numPages = pdf.numPages;
-                const pagePromises = [];
-                for (let i = 1; i <= numPages; i++) {
-                    pagePromises.push(pdf.getPage(i).then(page => page.getTextContent()).then(content => {
-                        content.items.forEach(item => {
-                            pdfText += item.str + ' ';
-                        });
-                    }));
-                }
-                return Promise.all(pagePromises).then(() => pdfText);
-            });
-            return text;
-        }
-
-        async function readExcel(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    let text = '';
-                    workbook.SheetNames.forEach(sheet => {
-                        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheet], { header: 1 });
-                        rows.forEach(row => {
-                            text += row.join(' ') + '\n';
-                        });
-                    });
-                    resolve(text);
-                };
-                reader.onerror = reject;
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        async function readWord(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const arrayBuffer = event.target.result;
-                    mammoth.extractRawText({ arrayBuffer: arrayBuffer })
-                        .then(result => resolve(result.value))
-                        .catch(reject);
-                };
-                reader.onerror = reject;
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        async function readText(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    resolve(event.target.result);
-                };
-                reader.onerror = reject;
-                reader.readAsText(file);
-            });
-        }
-
         function clearConversation() {
-            document.getElementById('inputText').value = '';
-            document.getElementById('response').innerText = '';
             conversationHistory = [];
+            document.getElementById('response').innerText = ""; // Clear response
+            document.getElementById('inputText').value = ""; // Clear input
         }
     </script>
 </body>
