@@ -1,134 +1,382 @@
-<script>
-    let conversationHistory = [];
-
-    async function generateContent() {
-        const inputText = document.getElementById('inputText').value.trim().toLowerCase(); // Ambil teks input
-
-        if (inputText === "") {
-            alert("Pertanyaan tidak boleh kosong.");
-            return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gunawan's AI Insights</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            padding: 20px;
+            background-color: #181818; /* Dark background */
+            color: #fff; /* White text */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
 
-        // API key dipecah menjadi beberapa bagian
-        const apiKeyParts = ['AIzaSyCrE7', '1mcvtzBsy', 'LZljkDslmY', 'jQC9VrZCcs'];
-        const apiKey = apiKeyParts.join(''); // Menggabungkan bagian-bagian API key
-
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-        
-        const fileInput = document.getElementById('fileInput');
-        let fileText = '';
-
-        // Cek apakah ada file yang diunggah
-        if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            
-            // Handle PDF files
-            if (file.type === "application/pdf") {
-                fileText = await readPDF(file);
-            }
-            // Handle Excel files
-            else if (file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || file.type === "application/vnd.ms-excel") {
-                fileText = await readExcel(file);
-            }
-            // Handle Word documents
-            else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-                const arrayBuffer = await file.arrayBuffer();
-                const { value } = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
-                fileText = value;
-            }
-            // Handle text files
-            else if (file.type === "text/plain") {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    fileText = e.target.result;
-                };
-                reader.readAsText(file);
-            }
+        h1 {
+            color: #007bff; /* Biru untuk judul */
+            font-size: 3rem;
+            margin-bottom: 20px;
         }
 
-        // Gabungkan percakapan sebelumnya, teks input, dan file text
-        const combinedText = conversationHistory.join(' ') + ' ' + inputText + ' ' + fileText;
-        conversationHistory.push(inputText);
+        .container {
+            background-color: #282828; /* Darker grey background for container */
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 80%;
+            max-width: 800px;
+        }
 
-        const data = {
-            contents: [
-                {
-                    parts: [
-                        { text: combinedText }
-                    ]
-                }
-            ]
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 20px;
+            color: #fff; /* White text */
+            background-color: #383838; /* Darker grey for textarea */
+            border: 1px solid #444; /* Darker grey border */
+            padding: 15px;
+            box-sizing: border-box;
+            font-size: 1rem;
+            resize: none; /* Disable resizing */
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 1rem;
+            margin-right: 10px;
+            font-weight: 600;
+            background-color: #333; /* Dark grey button */
+            color: #fff; /* White text */
+            border: none; /* Remove default button border */
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #555; /* Darker grey on hover */
+        }
+
+        #response {
+            margin-top: 20px;
+            color: #007bff; /* Biru untuk jawaban AI */
+            font-weight: 600;
+            white-space: pre-wrap; /* Preserve line breaks */
+        }
+
+        #premiumNotice {
+            color: #ff5555; /* Red color for premium notice */
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        #voucherInput {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            color: #fff; /* White text */
+            background-color: #383838; /* Darker grey for input */
+            border: 1px solid #444; /* Darker grey border */
+            box-sizing: border-box;
+            font-size: 1rem;
+            border-radius: 5px;
+        }
+
+        #fileInput {
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #383838; /* Darker grey for file input */
+            color: #fff; /* White text */
+            border: 1px solid #444; /* Darker grey border */
+            box-sizing: border-box;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            opacity: 0;
+            position: absolute;
+            width: 0;
+            height: 0;
+        }
+
+        #fileInputLabel {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #333; /* Dark grey button */
+            color: #fff; /* White text */
+            border: none; /* Remove default button border */
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            border-radius: 5px;
+        }
+
+        #fileInputLabel:hover {
+            background-color: #555; /* Darker grey on hover */
+        }
+
+        #fileInput:focus + #fileInputLabel {
+            outline: 3px solid #007bff; /* Biru outline for focus */
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase functions from SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.2/firebase-app.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.1.2/firebase-firestore.js";
+
+        // Konfigurasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAkvyIqwHPlZKGlC5Zd9Gk8iBkyrIchjCA",
+            authDomain: "gnrzerosix-a1456.firebaseapp.com",
+            projectId: "gnrzerosix-a1456",
+            storageBucket: "gnrzerosix-a1456.appspot.com",
+            messagingSenderId: "255427571133",
+            appId: "1:255427571133:web:eccd86c7c7c9d59dba36d4",
+            measurementId: "G-V0EQ6PQ9EJ"
         };
 
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+        // Inisialisasi Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-            if (!response.ok) {
-                throw new Error('Network response was not ok.');
+        let isPremiumUser = false; // Default ke non-premium
+
+        // Fungsi untuk mengecek voucher di Firestore
+        async function checkVoucher() {
+            const voucherCode = document.getElementById('voucherInput').value.trim();
+            if (voucherCode === "") {
+                alert("Silakan masukkan kode voucher.");
+                return;
             }
 
-            const result = await response.json();
-            console.log(result);
-            
-            if (result && result.candidates && result.candidates.length > 0) {
-                const text = result.candidates[0].content.parts[0].text;
-                document.getElementById('response').innerText = text;
-                conversationHistory.push(text);
-            } else {
-                document.getElementById('response').innerText = "No valid response from the AI.";
+            const voucherRef = doc(db, 'vouchers', voucherCode);
+
+            try {
+                const docSnap = await getDoc(voucherRef);
+
+                if (docSnap.exists()) {
+                    if (docSnap.data().valid) {
+                        isPremiumUser = true;
+                        document.getElementById('fileInput').disabled = false; // Mengaktifkan input file
+                        document.getElementById('premiumNotice').style.display = 'none'; // Menyembunyikan pemberitahuan
+                        alert("Voucher valid! Anda sekarang adalah pengguna premium.");
+                    } else {
+                        alert("Voucher sudah digunakan atau tidak valid.");
+                    }
+                } else {
+                    alert("Voucher tidak ditemukan.");
+                }
+            } catch (error) {
+                console.error('Error validating voucher:', error);
+                alert('Terjadi kesalahan saat validasi voucher.');
             }
-        } catch (error) {
-            console.error('Error:', error);
-            document.getElementById('response').innerText = "Error fetching data.";
+        }
+
+        window.checkVoucher = checkVoucher; // Assign function to window so it can be accessed in the HTML
+    </script>
+</head>
+<body>
+    <h1>Gunawan's AI Insights</h1>
+    <div class="container">
+        <textarea id="inputText" placeholder="Ketik pertanyaan Anda di sini..."></textarea>
+
+        <!-- File input section with label -->
+        <input type="file" id="fileInput" accept=".txt,.doc,.docx,.pdf,.xls,.xlsx" disabled />
+        <label for="fileInput" id="fileInputLabel">Unggah Dokumen</label>
+
+        <p id="premiumNotice">
+            Fitur analisis dokumen ini hanya tersedia untuk pengguna premium. Harga (Rp. 100.000) Perbulan. 
+            <a href="https://panduanvoucher.blogspot.com/2024/09/cara-pembelian.html" target="_blank">Klik di sini untuk pembelian</a>
+        </p>
+
+        <!-- Voucher input section -->
+        <input type="text" id="voucherInput" placeholder="Masukkan kode voucher di sini..." />
+        <button onclick="checkVoucher()">Submit Voucher</button>
+
+        <button onclick="generateContent()">Generate</button>
+        <button onclick="clearConversation()">Clear Conversation</button>
+        <div id="response"></div>
+    </div>
+
+    <script>
+        let conversationHistory = [];
+
+       async function generateContent() {
+    const inputText = document.getElementById('inputText').value.trim().toLowerCase(); // Ambil teks input
+
+    if (inputText === "") {
+        alert("Pertanyaan tidak boleh kosong.");
+        return;
+    }
+
+    const fileInput = document.getElementById('fileInput');
+    let fileText = '';
+
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        if (file.type === "application/pdf") {
+            fileText = await readPDF(file);
+        } else if (file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || file.type === "application/vnd.ms-excel") {
+            fileText = await readExcel(file);
+        } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+            const arrayBuffer = await file.arrayBuffer();
+            const { value } = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+            fileText = value;
+        } else {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                fileText = e.target.result;
+            };
+            reader.readAsText(file);
         }
     }
 
-    async function readPDF(file) {
-        const pdfData = await file.arrayBuffer();
-        const pdfDoc = await pdfjsLib.getDocument({data: pdfData}).promise;
-        let text = '';
+    const combinedText = conversationHistory.join(' ') + ' ' + inputText + ' ' + fileText;
+    conversationHistory.push(inputText);
 
-        for (let i = 1; i <= pdfDoc.numPages; i++) {
-            const page = await pdfDoc.getPage(i);
-            const content = await page.getTextContent();
-            const pageText = content.items.map(item => item.str).join(' ');
-            text += pageText + ' ';
-        }
+    const data = {
+        contents: [
+            {
+                parts: [
+                    { text: combinedText }
+                ]
+            }
+        ]
+    };
 
-        return text;
-    }
-
-    async function readExcel(file) {
-        const data = await file.arrayBuffer();
-        const workbook = XLSX.read(data, { type: 'array' });
-        let text = '';
-
-        workbook.SheetNames.forEach(sheetName => {
-            const worksheet = workbook.Sheets[sheetName];
-            text += XLSX.utils.sheet_to_csv(worksheet) + '\n';
+    try {
+        const response = await fetch('/.netlify/functions/generateContent', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
         });
 
-        return text;
+        const result = await response.json();
+        const text = result.candidates[0].content.parts[0].text;
+        document.getElementById('response').innerText = text;
+        conversationHistory.push(text);
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('response').innerText = "Error fetching data.";
     }
+}
 
-    // Fungsi untuk menghapus riwayat percakapan dan membersihkan tampilan
-    function clearConversation() {
-        conversationHistory = [];
-        document.getElementById('inputText').value = '';
-        document.getElementById('response').innerText = '';
-        document.getElementById('fileInput').value = '';
-    }
 
-    document.getElementById('inputText').addEventListener('keypress', function (event) {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            generateContent();
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                
+                // Handle PDF files
+                if (file.type === "application/pdf") {
+                    fileText = await readPDF(file);
+                }
+                // Handle Excel files
+                else if (file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || file.type === "application/vnd.ms-excel") {
+                    fileText = await readExcel(file);
+                }
+                // Handle Word documents
+                else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const { value } = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                    fileText = value;
+                }
+                // Handle text files
+                else {
+                    const reader = new FileReader();
+                    reader.onload = async function(e) {
+                        fileText = e.target.result;
+                    };
+                    reader.readAsText(file);
+                }
+            }
+
+            const combinedText = conversationHistory.join(' ') + ' ' + inputText + ' ' + fileText;
+            conversationHistory.push(inputText);
+
+            const data = {
+                contents: [
+                    {
+                        parts: [
+                            { text: combinedText }
+                        ]
+                    }
+                ]
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                console.log(result);
+                
+                const text = result.candidates[0].content.parts[0].text;
+
+                document.getElementById('response').innerText = text;
+
+                conversationHistory.push(text);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('response').innerText = "Error fetching data.";
+            }
         }
-    });
-</script>
+
+        async function readPDF(file) {
+            const pdfData = await file.arrayBuffer();
+            const pdfDoc = await pdfjsLib.getDocument({data: pdfData}).promise;
+            let text = '';
+
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const content = await page.getTextContent();
+                const pageText = content.items.map(item => item.str).join(' ');
+                text += pageText + ' ';
+            }
+
+            return text;
+        }
+
+        async function readExcel(file) {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { type: 'array' });
+            let text = '';
+
+            workbook.SheetNames.forEach(sheetName => {
+                const worksheet = workbook.Sheets[sheetName];
+                text += XLSX.utils.sheet_to_csv(worksheet) + '\n';
+            });
+
+            return text;
+        }
+
+        // Fungsi untuk menghapus riwayat percakapan dan membersihkan tampilan
+        function clearConversation() {
+            conversationHistory = [];
+            document.getElementById('inputText').value = '';
+            document.getElementById('response').innerText = '';
+            document.getElementById('fileInput').value = '';
+        }
+
+        document.getElementById('inputText').addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                generateContent();
+            }
+        });
+    </script>
+</body>
+</html>
