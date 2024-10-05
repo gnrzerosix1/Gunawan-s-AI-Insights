@@ -134,7 +134,7 @@
 
         // Konfigurasi Firebase
         const firebaseConfig = {
-            apiKey: "AIzaSyAkvyIqwHPlZKGlC5Zd9Gk8iBkyrIchjCA",
+            apiKey: process.env.API_KEY, // Menggunakan variabel lingkungan
             authDomain: "gnrzerosix-a1456.firebaseapp.com",
             projectId: "gnrzerosix-a1456",
             storageBucket: "gnrzerosix-a1456.appspot.com",
@@ -217,9 +217,8 @@
                 return;
             }
 
-            // API key dipecah menjadi beberapa bagian
-            const apiKeyParts = ['AIzaSyCrE7', '1mcvtzBsy', 'LZljkDslmY', 'jQC9VrZCcs'];
-            const apiKey = apiKeyParts.join(''); // Menggabungkan bagian-bagian API key
+            // Menggunakan API key dari variabel lingkungan
+            const apiKey = process.env.API_KEY;
 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
             
@@ -234,103 +233,123 @@
                     fileText = await readPDF(file);
                 }
                 // Handle Excel files
-                else if (file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || file.type === "application/vnd.ms-excel") {
+                else if (file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || 
+                         file.type === "application/vnd.ms-excel") {
                     fileText = await readExcel(file);
                 }
-                // Handle Word documents
-                else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const { value } = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
-                    fileText = value;
+                // Handle Word files
+                else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
+                         file.type === "application/msword") {
+                    fileText = await readWord(file);
                 }
                 // Handle text files
-                else {
-                    const reader = new FileReader();
-                    reader.onload = async function(e) {
-                        fileText = e.target.result;
-                    };
-                    reader.readAsText(file);
+                else if (file.type === "text/plain") {
+                    fileText = await readText(file);
                 }
             }
 
-            const combinedText = conversationHistory.join(' ') + ' ' + inputText + ' ' + fileText;
-            conversationHistory.push(inputText);
-
-            const data = {
-                contents: [
-                    {
-                        parts: [
-                            { text: combinedText }
-                        ]
-                    }
-                ]
+            const requestBody = {
+                prompt: inputText + " " + fileText,
+                temperature: 0.5,
+                maxTokens: 100,
+                topP: 1,
+                frequencyPenalty: 0,
+                presencePenalty: 0,
             };
 
             try {
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
                     },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify(requestBody)
                 });
 
-                const result = await response.json();
-                console.log(result);
-                
-                const text = result.candidates[0].content.parts[0].text;
+                if (!response.ok) {
+                    throw new Error("Network response was not ok " + response.statusText);
+                }
 
-                document.getElementById('response').innerText = text;
+                const data = await response.json();
+                const generatedText = data.generatedText || "Tidak ada jawaban yang dihasilkan.";
 
-                conversationHistory.push(text);
+                // Update history
+                conversationHistory.push({ input: inputText, response: generatedText });
+                document.getElementById('response').innerText = generatedText;
             } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('response').innerText = "Error fetching data.";
+                console.error("Error:", error);
+                alert("Terjadi kesalahan saat mengambil respons dari API.");
             }
         }
 
         async function readPDF(file) {
-            const pdfData = await file.arrayBuffer();
-            const pdfDoc = await pdfjsLib.getDocument({data: pdfData}).promise;
-            let text = '';
-
-            for (let i = 1; i <= pdfDoc.numPages; i++) {
-                const page = await pdfDoc.getPage(i);
-                const content = await page.getTextContent();
-                const pageText = content.items.map(item => item.str).join(' ');
-                text += pageText + ' ';
-            }
-
+            const text = await pdfjsLib.getDocument(URL.createObjectURL(file)).promise.then(pdf => {
+                let pdfText = '';
+                const numPages = pdf.numPages;
+                const pagePromises = [];
+                for (let i = 1; i <= numPages; i++) {
+                    pagePromises.push(pdf.getPage(i).then(page => page.getTextContent()).then(content => {
+                        content.items.forEach(item => {
+                            pdfText += item.str + ' ';
+                        });
+                    }));
+                }
+                return Promise.all(pagePromises).then(() => pdfText);
+            });
             return text;
         }
 
         async function readExcel(file) {
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data, { type: 'array' });
-            let text = '';
-
-            workbook.SheetNames.forEach(sheetName => {
-                const worksheet = workbook.Sheets[sheetName];
-                text += XLSX.utils.sheet_to_csv(worksheet) + '\n';
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    let text = '';
+                    workbook.SheetNames.forEach(sheet => {
+                        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheet], { header: 1 });
+                        rows.forEach(row => {
+                            text += row.join(' ') + '\n';
+                        });
+                    });
+                    resolve(text);
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
             });
-
-            return text;
         }
 
-        // Fungsi untuk menghapus riwayat percakapan dan membersihkan tampilan
+        async function readWord(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const arrayBuffer = event.target.result;
+                    mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                        .then(result => resolve(result.value))
+                        .catch(reject);
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function readText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    resolve(event.target.result);
+                };
+                reader.onerror = reject;
+                reader.readAsText(file);
+            });
+        }
+
         function clearConversation() {
-            conversationHistory = [];
             document.getElementById('inputText').value = '';
             document.getElementById('response').innerText = '';
-            document.getElementById('fileInput').value = '';
+            conversationHistory = [];
         }
-
-        document.getElementById('inputText').addEventListener('keypress', function (event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                generateContent();
-            }
-        });
     </script>
 </body>
 </html>
