@@ -18,7 +18,7 @@
         }
 
         h1 {
-            color: #FF4500; /* Cyan for title */
+            color: #FF4500; /* Orange-Red, bukan Cyan */
             font-size: 3rem;
             margin-bottom: 20px;
         }
@@ -64,27 +64,9 @@
 
         #response {
             margin-top: 20px;
-            color: #FF4500; /* Cyan for AI response */
+            color: #FF4500; /* Orange-Red for AI response */
             font-weight: 400;
             white-space: pre-wrap; /* Preserve line breaks */
-        }
-
-        #premiumNotice {
-            color: #ff5555; /* Red color for premium notice */
-            margin-top: 10px;
-            font-size: 0.9rem;
-        }
-
-        #voucherInput {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            color: #fff; /* White text */
-            background-color: #383838; /* Darker grey for input */
-            border: 1px solid #444; /* Darker grey border */
-            box-sizing: border-box;
-            font-size: 1rem;
-            border-radius: 5px;
         }
 
         #fileInput {
@@ -119,69 +101,19 @@
         }
 
         #fileInput:focus + #fileInputLabel {
-            outline: 3px solid #FF4500; /* Cyan outline for focus */
+            outline: 3px solid #FF4500; /* Orange-Red outline for focus */
+        }
+
+        /* Tambahkan state disabled untuk label */
+        #fileInputLabel.disabled {
+            background-color: #282828;
+            cursor: not-allowed;
+            opacity: 0.7;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
-
-    <!-- Firebase SDK -->
-    <script type="module">
-        // Import Firebase functions from SDK
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.2/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.1.2/firebase-firestore.js";
-
-        // Konfigurasi Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyAkvyIqwHPlZKGlC5Zd9Gk8iBkyrIchjCA",
-            authDomain: "gnrzerosix-a1456.firebaseapp.com",
-            projectId: "gnrzerosix-a1456",
-            storageBucket: "gnrzerosix-a1456.appspot.com",
-            messagingSenderId: "255427571133",
-            appId: "1:255427571133:web:eccd86c7c7c9d59dba36d4",
-            measurementId: "G-V0EQ6PQ9EJ"
-        };
-
-        // Inisialisasi Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        let isPremiumUser = false; // Default ke non-premium
-
-        // Fungsi untuk mengecek voucher di Firestore
-        async function checkVoucher() {
-            const voucherCode = document.getElementById('voucherInput').value.trim();
-            if (voucherCode === "") {
-                alert("Silakan masukkan kode voucher.");
-                return;
-            }
-
-            const voucherRef = doc(db, 'vouchers', voucherCode);
-
-            try {
-                const docSnap = await getDoc(voucherRef);
-
-                if (docSnap.exists()) {
-                    if (docSnap.data().valid) {
-                        isPremiumUser = true;
-                        document.getElementById('fileInput').disabled = false; // Mengaktifkan input file
-                        document.getElementById('premiumNotice').style.display = 'none'; // Menyembunyikan pemberitahuan
-                        alert("Voucher valid! Anda sekarang adalah pengguna premium.");
-                    } else {
-                        alert("Voucher sudah digunakan atau tidak valid.");
-                    }
-                } else {
-                    alert("Voucher tidak ditemukan.");
-                }
-            } catch (error) {
-                console.error('Error validating voucher:', error);
-                alert('Terjadi kesalahan saat validasi voucher.');
-            }
-        }
-
-        window.checkVoucher = checkVoucher; // Assign function to window so it can be accessed in the HTML
-    </script>
 </head>
 <body>
     <h1>Gunawan's AI Insights</h1>
@@ -189,17 +121,8 @@
         <textarea id="inputText" placeholder="Ketik pertanyaan Anda di sini..."></textarea>
 
         <!-- File input section with label -->
-        <input type="file" id="fileInput" accept=".txt,.doc,.docx,.pdf,.xls,.xlsx" disabled />
+        <input type="file" id="fileInput" accept=".txt,.doc,.docx,.pdf,.xls,.xlsx" />
         <label for="fileInput" id="fileInputLabel">Unggah Dokumen</label>
-
-        <p id="premiumNotice">
-            Dukung pengembangan website ini dengan Traktir kami 1 Pizza dan dapatkan akses untuk mengunggah dokumen.
-            <a href="https://trakteer.id/gunawanai/link" target="_blank">Klik di sini untuk Traktir</a>
-        </p>
-
-        <!-- Voucher input section -->
-        <input type="text" id="voucherInput" placeholder="Masukkan kode voucher di sini..." />
-        <button onclick="checkVoucher()">Submit Voucher</button>
 
         <button onclick="generateContent()">Generate</button>
         <button onclick="clearConversation()">Clear Conversation</button>
@@ -245,11 +168,7 @@
                 }
                 // Handle text files
                 else {
-                    const reader = new FileReader();
-                    reader.onload = async function(e) {
-                        fileText = e.target.result;
-                    };
-                    reader.readAsText(file);
+                    fileText = await readTextFile(file); // Gunakan fungsi promise-based
                 }
             }
 
@@ -331,6 +250,20 @@
                 generateContent();
             }
         });
+
+        // Fungsi pembantu untuk membaca file teks
+        function readTextFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    resolve(e.target.result);
+                };
+                reader.onerror = function(e) {
+                    reject(e);
+                };
+                reader.readAsText(file);
+            });
+        }
     </script>
 </body>
 </html>
