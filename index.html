@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,7 +14,6 @@
       --text-color: #FFFFFF;
       --border-color: #333333;
     }
-
     body {
       font-family: 'Poppins', sans-serif;
       margin: 0;
@@ -23,7 +23,6 @@
       display: flex;
       flex-direction: column;
     }
-
     .header {
       padding: 16px;
       border-bottom: 1px solid var(--border-color);
@@ -31,7 +30,6 @@
       justify-content: space-between;
       align-items: center;
     }
-
     .chat-container {
       flex: 1;
       overflow-y: auto;
@@ -40,35 +38,29 @@
       margin: 0 auto;
       width: 100%;
     }
-
     .message {
       margin-bottom: 20px;
       max-width: 70%;
     }
-
     .user-message {
       margin-left: auto;
       background: var(--primary-color);
       color: white;
       border-radius: 12px 12px 4px 12px;
     }
-
     .ai-message {
       background: var(--container-bg);
       border-radius: 12px 12px 12px 4px;
     }
-
     .message-content {
       padding: 12px 16px;
       font-size: 0.9rem;
     }
-
     .message-label {
       font-size: 0.75rem;
       color: #888;
       margin-bottom: 4px;
     }
-
     .input-container {
       padding: 16px;
       border-top: 1px solid var(--border-color);
@@ -76,14 +68,13 @@
       position: sticky;
       bottom: 0;
     }
-
     .input-wrapper {
       max-width: 800px;
       margin: 0 auto;
       display: flex;
       gap: 8px;
+      align-items: center;
     }
-
     input[type="text"] {
       flex: 1;
       padding: 12px;
@@ -93,7 +84,6 @@
       color: var(--text-color);
       font-size: 0.9rem;
     }
-
     button {
       padding: 12px 20px;
       background: var(--primary-color);
@@ -104,22 +94,55 @@
       font-weight: 500;
       transition: opacity 0.2s;
     }
-
     button:hover {
       opacity: 0.9;
     }
-
     .new-chat-btn {
       background: transparent;
       border: 1px solid var(--border-color);
     }
-
     .model-indicator {
       font-size: 0.8rem;
       color: #888;
       padding: 4px 8px;
       background: var(--container-bg);
       border-radius: 4px;
+    }
+    #fileInput {
+      opacity: 0;
+      position: absolute;
+      width: 0;
+      height: 0;
+    }
+    #fileInputLabel {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background-color: #555;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      border-radius: 8px;
+      font-size: 1.2rem;
+    }
+    #fileInputLabel:hover {
+      background-color: #777;
+    }
+    #fileInput:focus + #fileInputLabel {
+      outline: 3px solid #FF4500;
+    }
+    #fileInputLabel.disabled {
+      background-color: #282828;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    #fileInfo {
+      font-size: 0.8rem;
+      color: #888;
+      margin-left: 8px;
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
@@ -129,36 +152,66 @@
 </head>
 <body>
   <div class="header">
-    <button class="new-chat-btn">+ New Chat</button>
+    <button class="new-chat-btn" onclick="startNewChat()">+ New Chat</button>
     <div class="model-indicator">DeepThink (R1)</div>
   </div>
-
   <div class="chat-container" id="chatContainer"></div>
-
   <div class="input-container">
     <div class="input-wrapper">
+      <input type="file" id="fileInput" accept=".txt,.doc,.docx,.pdf,.xls,.xlsx,.png,.jpg,.jpeg" onchange="displayFileInfo()" />
+      <label for="fileInput" id="fileInputLabel">+</label>
+      <span id="fileInfo"></span>
       <input type="text" id="inputText" placeholder="Type your message...">
       <button onclick="generateContent()">Send</button>
     </div>
   </div>
-
   <script>
+    let currentChatId = 0;
+    const chats = {};
+
     document.getElementById('inputText').addEventListener('keypress', function(event) {
       if (event.key === 'Enter') {
         event.preventDefault();
         generateContent();
       }
     });
+
     async function generateContent() {
       const inputText = document.getElementById('inputText').value.trim();
-      if (!inputText) return;
+      const fileInput = document.getElementById('fileInput');
+      let fileText = '';
 
-      addMessage(true, inputText);
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        if (file.type === "application/pdf") {
+          fileText = await readPDF(file);
+        } else if (
+          file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+          file.type === "application/vnd.ms-excel"
+        ) {
+          fileText = await readExcel(file);
+        } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+          const arrayBuffer = await file.arrayBuffer();
+          const { value } = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+          fileText = value;
+        } else if (file.type.startsWith("image/")) {
+          fileText = await readImageWithOCR(file);
+        } else {
+          fileText = await readTextFile(file);
+        }
+      }
+
+      const combinedText = inputText + (fileText ? `\n\nFile Content:\n${fileText}` : '');
+      if (!combinedText.trim()) return;
+
+      addMessage(true, inputText || '[File Uploaded]');
       document.getElementById('inputText').value = '';
+      fileInput.value = '';
+      document.getElementById('fileInfo').textContent = ''; // Clear file info after sending
 
       const apiKey = 'AIzaSyCrE71mcvtzBsyLZljkDslmYjQC9VrZCcs';
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-      const data = { contents: [{ parts: [{ text: inputText }] }] };
+      const data = { contents: [{ parts: [{ text: combinedText }] }] };
 
       try {
         const response = await fetch(url, {
@@ -189,6 +242,74 @@
       messageDiv.appendChild(content);
       chatContainer.appendChild(messageDiv);
       chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    async function readPDF(file) {
+      const pdfData = await file.arrayBuffer();
+      const pdfDoc = await pdfjsLib.getDocument({ data: pdfData }).promise;
+      let text = '';
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        const page = await pdfDoc.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map(item => item.str).join(' ');
+        text += pageText + ' ';
+      }
+      return text;
+    }
+
+    async function readExcel(file) {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      let text = '';
+      workbook.SheetNames.forEach(sheetName => {
+        const worksheet = workbook.Sheets[sheetName];
+        text += XLSX.utils.sheet_to_csv(worksheet) + '\n';
+      });
+      return text;
+    }
+
+    async function readImageWithOCR(file) {
+      const { createWorker } = Tesseract;
+      const worker = createWorker({
+        logger: m => console.log(m)
+      });
+      await worker.load();
+      await worker.loadLanguage('eng');
+      await worker.initialize('eng');
+      const { data: { text } } = await worker.recognize(file);
+      await worker.terminate();
+      return text;
+    }
+
+    function readTextFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          resolve(e.target.result);
+        };
+        reader.onerror = function(e) {
+          reject(e);
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    function startNewChat() {
+      const chatContainer = document.getElementById('chatContainer');
+      chatContainer.innerHTML = ''; // Clear the chat container
+      currentChatId++; // Increment the chat ID to track new chats
+      chats[currentChatId] = []; // Initialize a new chat history
+    }
+
+    function displayFileInfo() {
+      const fileInput = document.getElementById('fileInput');
+      const fileInfo = document.getElementById('fileInfo');
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        fileInfo.textContent = `${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+      } else {
+        fileInfo.textContent = '';
+      }
     }
   </script>
 </body>
